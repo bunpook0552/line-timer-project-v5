@@ -203,9 +203,9 @@ export async function POST(request: NextRequest) {
                 const q = machineConfigsCol.where('machine_type', '==', 'dryer').where('is_active', '==', true);
                 const snapshot = await q.get();
                 const buttons: QuickReplyItem[] = snapshot.docs.map(doc => ({
-                    type: 'action', action: { type: 'message', label: `${doc.data().duration_minutes} นาที`, text: `อบผ้า_เลือก_${doc.data().machine_id}` }
+                    type: 'action', action: { type: 'message', label: `เครื่อง ${doc.data().machine_id}`, text: `อบผ้า_เลือก_${doc.data().machine_id}` }
                 }));
-                const replyText = buttons.length > 0 ? 'กรุณาเลือกเวลาสำหรับเครื่องอบผ้าค่ะ' : 'ขออภัยค่ะ ขณะนี้ไม่มีเครื่องอบผ้าว่าง';
+                const replyText = buttons.length > 0 ? 'กรุณาเลือกหมายเลขเครื่องอบผ้าค่ะ' : 'ขออภัยค่ะ ขณะนี้ไม่มีเครื่องอบผ้าว่าง';
                 await replyMessage(replyToken, replyText, lineAccessToken, buttons);
 
             } else if (userMessage.startsWith("ซักผ้า_เลือก_") || userMessage.startsWith("อบผ้า_เลือก_")) {
