@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
-// Import Timestamp for correct typing
 import { getFirestore, collection, getDocs, doc, updateDoc, Timestamp, where, query } from 'firebase/firestore';
+import { useSearchParams } from 'next/navigation'; // Import ที่ถูกต้องสำหรับ useSearchParams
 
 // === กำหนดค่า Firebase (ใช้ของโปรเจกต์คุณ) ===
 const firebaseConfig = {
@@ -27,7 +27,7 @@ if (!getApps().length) {
 const db = getFirestore(firebaseApp);
 
 // === รหัสผ่านสำหรับเข้าหน้า Admin ===
-const ADMIN_PASSWORD = 'admin123'; // <--- คุณสามารถเปลี่ยนรหัสผ่านได้ที่นี่
+const ADMIN_PASSWORD = 'admin123'; 
 
 interface MachineConfig {
   id: string; // Document ID from Firestore
@@ -71,8 +71,9 @@ export default function AdminPage() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editMessageText, setEditMessageText] = useState('');
 
-
-  const STORE_ID = 'laundry_5';
+  // === ดึง STORE_ID จาก URL parameter ===
+  const searchParams = useSearchParams();
+  const STORE_ID = searchParams.get('storeId') || 'laundry_5'; // ใช้ laundry_5 เป็นค่าเริ่มต้น
 
   useEffect(() => {
     if (loggedIn) {
@@ -236,6 +237,10 @@ export default function AdminPage() {
             แผงควบคุมผู้ดูแล
           </h1>
           <p style={{ color: 'var(--text-dark)', marginBottom: '20px' }}>จัดการการตั้งค่าและข้อความตอบกลับของร้าน</p>
+
+          <p style={{ color: 'var(--text-dark)', marginBottom: '20px', fontWeight: 'bold' }}>
+            ร้านค้า ID: {STORE_ID}
+          </p>
 
           <button
             className="line-button"
