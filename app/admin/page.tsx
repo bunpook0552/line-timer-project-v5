@@ -73,7 +73,7 @@ function AdminPageContent() {
   const [editMessageText, setEditMessageText] = useState('');
 
   // === ดึง STORE_ID จาก URL parameter ===
-  // เนื่องจาก AdminPageContent ถูกเรียกใช้ภายใต้ Suspense จึงสามารถใช้ useSearchParams ได้
+  // เนื่องจาก Component นี้ถูกเรียกใช้ภายใต้ Suspense จึงสามารถใช้ useSearchParams ได้
   const searchParams = useSearchParams();
   const STORE_ID = searchParams.get('storeId') || 'laundry_5'; // ใช้ laundry_5 เป็นค่าเริ่มต้น
 
@@ -432,7 +432,7 @@ function AdminPageContent() {
                               </button>
                               <button
                                 className="line-button"
-                                style={{ backgroundColor: '#6c757d', padding: '8px 12px', fontSize: '0.9em' }}
+                                style={{ backgroundColor: 'var(--dark-pink)', padding: '8px 12px', fontSize: '0.9em' }}
                                 onClick={handleCancelMessageClick}
                               >
                                 ยกเลิก
@@ -491,5 +491,15 @@ function AdminPageContent() {
         </form>
       </div>
     </div>
+  );
+}
+
+// === Component หลักที่ใช้ Suspense เพื่อครอบ AdminPageContent ===
+// เพื่อแก้ปัญหา Next.js build error ที่ใช้ useSearchParams()
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<div>Loading admin page...</div>}>
+      <AdminPageContent />
+    </Suspense>
   );
 }
