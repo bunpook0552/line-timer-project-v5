@@ -1,0 +1,192 @@
+:root {
+    --primary-pink: #FF69B4; /* Hot Pink */
+    --light-pink: #FFC0CB;   /* Light Pink */
+    --dark-pink: #C71585;    /* Medium Violet Red */
+    --text-dark: #333;
+    --text-light: #fff;
+    --bg-light: #fbe9e7; /* Light Peach */
+    --bg-white: #ffffff;
+    --line-green: #06C755;
+}
+
+body {
+    font-family: 'Kanit', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--bg-light) 0%, var(--light-pink) 100%);
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+    color: var(--text-dark);
+    overflow-x: hidden;
+}
+
+.container {
+    background-color: var(--bg-white);
+    padding: 30px;
+    border-radius: 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    max-width: 550px;
+    width: 100%;
+    animation: fadeIn 1s ease-out;
+    box-sizing: border-box;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.header-section {
+    background-color: var(--primary-pink);
+    color: var(--text-light);
+    padding: 20px 0;
+    border-radius: 20px 20px 0 0;
+    margin: -30px -30px 30px -30px;
+    font-weight: 600;
+}
+
+.header-section h1 {
+    margin: 0;
+    font-size: 2em;
+    color: var(--text-light);
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+    line-height: 1.2;
+}
+
+.header-section p {
+    margin: 5px 0 0;
+    font-size: 1em;
+}
+
+/* --- Styles for Machine Selection (for client page) --- */
+.machine-selection {
+    margin: 30px 0;
+    padding: 20px;
+    background-color: var(--bg-light);
+    border-radius: 15px;
+    border: 1px solid var(--light-pink);
+}
+
+.machine-selection h2 {
+    margin-top: 0;
+    font-size: 1.3em;
+    color: var(--dark-pink);
+    font-weight: 600;
+}
+
+.machine-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.machine-button {
+    background-color: var(--bg-white);
+    border: 2px solid var(--light-pink);
+    color: var(--dark-pink);
+    padding: 15px 10px;
+    border-radius: 10px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.machine-button:hover {
+    background-color: #fff7f7;
+    transform: translateY(-2px);
+}
+
+.machine-button.selected {
+    background-color: var(--primary-pink);
+    color: var(--text-light);
+    border-color: var(--dark-pink);
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(199, 21, 133, 0.3);
+}
+
+.selection-info {
+    margin-top: 20px;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--dark-pink);
+}
+
+.line-button {
+    background-color: var(--line-green);
+    color: var(--text-light);
+    padding: 15px 30px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 1.2em;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    text-decoration: none;
+    box-shadow: 0 4px 15px rgba(0, 199, 85, 0.3);
+    box-sizing: border-box;
+    margin-top: 20px;
+}
+
+.line-button:hover {
+    background-color: #05a044;
+    transform: translateY(-3px);
+}
+
+.line-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.line-icon {
+    width: 30px;
+    height: 30px;
+    vertical-align: middle;
+    filter: brightness(0) invert(1);
+}
+
+.footer-note {
+    margin-top: 25px;
+    font-size: 0.9em;
+    color: #777;
+}
+
+/* === Mobile Optimization === */
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+    .container {
+        padding: 20px;
+    }
+
+    .header-section {
+        margin: -20px -20px 20px -20px; 
+    }
+
+    .header-section h1 {
+        font-size: 1.7em;
+    }
+     .header-section p {
+        font-size: 0.9em;
+    }
+    
+    .line-button {
+        display: flex; 
+        width: 100%;
+        font-size: 1.1em;
+        padding: 14px 20px;
+    }
+}
