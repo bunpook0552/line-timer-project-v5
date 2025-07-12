@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react'; // เพิ่ม Suspense
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, doc, updateDoc, Timestamp, where, query } from 'firebase/firestore';
-import { useSearchParams } from 'next/navigation'; // Import ที่ถูกต้องสำหรับ useSearchParams
+import { useSearchParams } from 'next/navigation';
 
 // === กำหนดค่า Firebase (ใช้ของโปรเจกต์คุณ) ===
 const firebaseConfig = {
@@ -55,7 +55,9 @@ interface MessageTemplate {
   text: string;
 }
 
-export default function AdminPage() {
+// === Component ย่อยที่ดึงข้อมูลจาก URL และแสดงหน้า Admin หลัก ===
+// เราใช้ Component นี้เพื่อครอบคลุมการใช้ useSearchParams
+function AdminPageContent() {
   const [password, setPassword] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
   const [error, setError] = useState('');
