@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react'; // เพิ่ม Suspense
+import { useState, useEffect, Suspense } from 'react'; 
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, doc, updateDoc, Timestamp, where, query } from 'firebase/firestore';
 import { useSearchParams } from 'next/navigation';
@@ -21,7 +21,7 @@ let firebaseApp;
 if (!getApps().length) {
   firebaseApp = initializeApp(firebaseConfig);
 } else {
-  firebaseApp = getApp(); // if already initialized, use that one
+  firebaseApp = getApp(); 
 }
 
 const db = getFirestore(firebaseApp);
@@ -30,7 +30,7 @@ const db = getFirestore(firebaseApp);
 const ADMIN_PASSWORD = 'admin123'; 
 
 interface MachineConfig {
-  id: string; // Document ID from Firestore
+  id: string; 
   machine_id: number;
   machine_type: 'washer' | 'dryer';
   duration_minutes: number;
@@ -39,7 +39,7 @@ interface MachineConfig {
 }
 
 interface ActiveTimer {
-  id: string; // Document ID from Firestore (timers collection)
+  id: string; 
   user_id: string;
   machine_id: number;
   machine_type: 'washer' | 'dryer';
@@ -50,13 +50,12 @@ interface ActiveTimer {
 }
 
 interface MessageTemplate {
-  docId: string;  // Firestore document ID
-  id: string;     // Custom ID like 'initial_greeting'
+  docId: string;  
+  id: string;     
   text: string;
 }
 
-// === Component ย่อยที่ดึงข้อมูลจาก URL และแสดงหน้า Admin หลัก ===
-// เราใช้ Component นี้เพื่อครอบคลุมการใช้ useSearchParams
+// === Component ที่มี Logic การดึงข้อมูลและแสดงผลหน้า Admin ===
 function AdminPageContent() {
   const [password, setPassword] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
@@ -74,6 +73,7 @@ function AdminPageContent() {
   const [editMessageText, setEditMessageText] = useState('');
 
   // === ดึง STORE_ID จาก URL parameter ===
+  // เนื่องจาก AdminPageContent ถูกเรียกใช้ภายใต้ Suspense จึงสามารถใช้ useSearchParams ได้
   const searchParams = useSearchParams();
   const STORE_ID = searchParams.get('storeId') || 'laundry_5'; // ใช้ laundry_5 เป็นค่าเริ่มต้น
 
