@@ -17,7 +17,7 @@ const db = admin.firestore();
 // --- สิ้นสุดส่วนการเชื่อมต่อ ---
 
 // === กำหนด ID ร้านค้า (สำหรับร้านแรก) ===
-const STORE_ID = 'laundry_1';
+const STORE_ID = 'laundry_5';
 
 // กำหนด Type สำหรับ Quick Reply Item เพื่อความถูกต้องของ TypeScript
 interface QuickReplyAction {

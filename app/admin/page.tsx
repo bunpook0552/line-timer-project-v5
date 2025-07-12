@@ -72,7 +72,7 @@ export default function AdminPage() {
   const [editMessageText, setEditMessageText] = useState('');
 
 
-  const STORE_ID = 'laundry_1';
+  const STORE_ID = 'laundry_5';
 
   useEffect(() => {
     if (loggedIn) {
