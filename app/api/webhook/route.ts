@@ -3,6 +3,7 @@ import admin from 'firebase-admin';
 import crypto from 'crypto';
 
 // --- ส่วนเริ่มต้นการเชื่อมต่อ Firebase Admin SDK (สำหรับหลังบ้าน) ---
+// เราจะยังใช้ FIREBASE_SERVICE_ACCOUNT จาก Environment Variables สำหรับ Admin SDK
 if (!admin.apps.length) {
   try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT!);
@@ -17,6 +18,9 @@ const db = admin.firestore();
 // --- สิ้นสุดส่วนการเชื่อมต่อ ---
 
 // === กำหนด ID ร้านค้า (สำหรับร้านแรก) ===
+// หากต้องการรองรับหลายร้านค้าในอนาคต เราจะต้องดึง STORE_ID จาก Request
+// แต่เนื่องจากโค้ดเดิมของคุณกำหนดไว้ตายตัว เราจึงใช้ค่านี้ในการดึง Line API Keys จาก Firestore
+// หากต้องการให้บอทรองรับหลายร้านค้าในอนาคตโดยไม่ต้องแก้โค้ดนี้ จะต้องมีการปรับโครงสร้างให้ดึง STORE_ID แบบไดนามิก (เช่นจาก URL หรือ Line Source)
 const STORE_ID = 'laundry_5';
 
 // กำหนด Type สำหรับ Quick Reply Item เพื่อความถูกต้องของ TypeScript
@@ -41,7 +45,6 @@ interface MessageTemplate {
 // START: CODE FIX AREA
 // ===================================================================================
 // สร้าง Interface สำหรับ LINE Event เพื่อหลีกเลี่ยงการใช้ 'any'
-// Create an interface for LINE Events to avoid using 'any'
 interface LineEvent {
   type: string;
   replyToken: string;
@@ -72,7 +75,7 @@ async function fetchMessagesFromFirestore(storeId: string): Promise<void> {
         const templatesCol = db.collection('stores').doc(storeId).collection('message_templates');
         const snapshot = await templatesCol.get();
         if (snapshot.empty) {
-            console.warn("No message templates found in Firestore. Using default fallbacks.");
+            console.warn(`No message templates found for store ${storeId}. Using default fallbacks.`);
             // Fallback to basic default messages if nothing found in DB
             messageTemplatesMap.set('initial_greeting', 'สวัสดีค่ะ ร้านซัก-อบ ยินดีต้อนรับ 🙏\n\nกรุณาเลือกบริการที่ต้องการค่ะ');
             messageTemplatesMap.set('start_timer_confirmation', 'รับทราบค่ะ! ✅\nเริ่มจับเวลา {duration} นาทีสำหรับ {display_name} แล้วค่ะ');
@@ -89,7 +92,7 @@ async function fetchMessagesFromFirestore(storeId: string): Promise<void> {
                     messageTemplatesMap.set(data.id, data.text);
                 }
             });
-            console.log(`Fetched ${messageTemplatesMap.size} message templates from Firestore.`);
+            console.log(`Fetched ${messageTemplatesMap.size} message templates from Firestore for store ${storeId}.`);
         }
     } catch (error) {
         console.error("Error fetching message templates from Firestore:", error);
@@ -109,9 +112,9 @@ async function fetchMessagesFromFirestore(storeId: string): Promise<void> {
 
 
 // ฟังก์ชันสำหรับส่งข้อความตอบกลับพร้อมปุ่ม Quick Reply
-async function replyMessage(replyToken: string, text: string, quickReplyItems?: QuickReplyItem[]) {
+// แก้ไข: เพิ่ม accessToken เป็น parameter
+async function replyMessage(replyToken: string, text: string, accessToken: string, quickReplyItems?: QuickReplyItem[]) {
   const replyUrl = 'https://api.line.me/v2/bot/message/reply';
-  const accessToken = process.env.LINE_MESSAGING_TOKEN!;
 
   const messagePayload: {
     replyToken: string;
@@ -132,7 +135,7 @@ async function replyMessage(replyToken: string, text: string, quickReplyItems?: 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
+      'Authorization': `Bearer ${accessToken}`, // ใช้ accessToken ที่ส่งมา
     },
     body: JSON.stringify(messagePayload),
   });
@@ -142,7 +145,8 @@ async function replyMessage(replyToken: string, text: string, quickReplyItems?: 
 }
 
 // ฟังก์ชันสำหรับเริ่มจับเวลาและบันทึกลง DB
-async function startTimer(userId: string, storeId: string, machineType: 'washer' | 'dryer', machineId: number, duration: number, displayName: string, replyToken: string) {
+// แก้ไข: เพิ่ม accessToken เป็น parameter
+async function startTimer(userId: string, storeId: string, machineType: 'washer' | 'dryer', machineId: number, duration: number, displayName: string, replyToken: string, accessToken: string) {
     const endTime = new Date(Date.now() + duration * 60 * 1000);
 
     const existingTimersQuery = await db.collection('stores').doc(storeId).collection('timers')
@@ -153,7 +157,7 @@ async function startTimer(userId: string, storeId: string, machineType: 'washer'
 
     if (!existingTimersQuery.empty) {
         const busyMessage = messageTemplatesMap.get('machine_busy') || 'เครื่อง {display_name} กำลังใช้งานอยู่ค่ะ';
-        await replyMessage(replyToken, busyMessage.replace('{display_name}', displayName));
+        await replyMessage(replyToken, busyMessage.replace('{display_name}', displayName), accessToken);
         return;
     }
 
@@ -173,27 +177,42 @@ async function startTimer(userId: string, storeId: string, machineType: 'washer'
     await replyMessage(replyToken, 
         confirmationMessage
             .replace('{duration}', String(duration))
-            .replace('{display_name}', displayName)
+            .replace('{display_name}', displayName),
+        accessToken
     );
 }
 
+// แก้ไข: โค้ดส่วน POST function เพื่อดึง Line API Keys จาก Firebase
 export async function POST(request: NextRequest) {
-  // ใช้ Interface 'LineEvent[]' ที่สร้างขึ้นมาแทน 'any[]'
-  // Use the created 'LineEvent[]' interface instead of 'any[]'
   let events: LineEvent[] = [];
 
   try {
+    // ดึงข้อมูลข้อความจาก Firestore โดยใช้ STORE_ID ที่กำหนดไว้
     await fetchMessagesFromFirestore(STORE_ID);
 
     const body = await request.text();
     const signature = request.headers.get('x-line-signature') || '';
-    const channelSecret = process.env.LINE_MESSAGING_CHANNEL_SECRET!;
 
-    if (!channelSecret) {
-      console.error("LINE_MESSAGING_CHANNEL_SECRET is not set.");
-      throw new Error("LINE_MESSAGING_CHANNEL_SECRET is not set in environment variables.");
+    // *** ดึงข้อมูลร้านค้าจาก Firebase เพื่อให้ได้ Line API Keys ***
+    const storeRef = db.collection('stores').doc(STORE_ID);
+    const storeDoc = await storeRef.get();
+
+    if (!storeDoc.exists) {
+        console.error(`Store ${STORE_ID} not found in Firestore.`);
+        return new NextResponse("Store not found", { status: 404 });
+    }
+    
+    const storeData = storeDoc.data();
+    // ดึง channelSecret และ lineAccessToken จาก Firebase (ไม่ใช่จาก Environment Variables)
+    const channelSecret = storeData?.line_channel_secret; 
+    const lineAccessToken = storeData?.line_access_token; 
+
+    if (!channelSecret || !lineAccessToken) {
+        console.error("Line API keys missing in Firestore for store:", STORE_ID);
+        return new NextResponse("Line API keys missing in Firestore", { status: 500 });
     }
 
+    // *** ตรวจสอบลายเซ็นด้วย channelSecret ที่ดึงมาจาก Firebase ***
     const hash = crypto.createHmac('sha256', channelSecret).update(body).digest('base64');
     if (hash !== signature) {
       return new NextResponse("Signature validation failed!", { status: 401 });
@@ -220,9 +239,11 @@ export async function POST(request: NextRequest) {
             });
 
             if (washerButtons.length > 0) {
-                await replyMessage(replyToken, 'กรุณาเลือกหมายเลขเครื่องซักผ้าค่ะ', washerButtons);
+                // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                await replyMessage(replyToken, 'กรุณาเลือกหมายเลขเครื่องซักผ้าค่ะ', lineAccessToken, washerButtons);
             } else {
-                await replyMessage(replyToken, 'ขออภัยค่ะ ขณะนี้ไม่มีเครื่องซักผ้าว่าง');
+                // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                await replyMessage(replyToken, 'ขออภัยค่ะ ขณะนี้ไม่มีเครื่องซักผ้าว่าง', lineAccessToken);
             }
 
         } else if (userMessage === "อบผ้า") {
@@ -239,9 +260,11 @@ export async function POST(request: NextRequest) {
             });
 
             if (dryerButtons.length > 0) {
-                await replyMessage(replyToken, 'กรุณาเลือกเวลาสำหรับเครื่องอบผ้าค่ะ', dryerButtons);
+                // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                await replyMessage(replyToken, 'กรุณาเลือกเวลาสำหรับเครื่องอบผ้าค่ะ', lineAccessToken, dryerButtons);
             } else {
-                await replyMessage(replyToken, 'ขออภัยค่ะ ขณะนี้ไม่มีเครื่องอบผ้าว่าง');
+                // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                await replyMessage(replyToken, 'ขออภัยค่ะ ขณะนี้ไม่มีเครื่องอบผ้าว่าง', lineAccessToken);
             }
         } 
         else if (userMessage.startsWith("ซักผ้า_เลือก_")) {
@@ -254,16 +277,20 @@ export async function POST(request: NextRequest) {
                 if (!machineSnapshot.empty) {
                     const machineConfigData = machineSnapshot.docs[0].data();
                     if (machineConfigData.is_active) {
-                        await startTimer(userId, STORE_ID, 'washer', machineConfigData.machine_id, machineConfigData.duration_minutes, machineConfigData.display_name, replyToken);
+                        // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                        await startTimer(userId, STORE_ID, 'washer', machineConfigData.machine_id, machineConfigData.duration_minutes, machineConfigData.display_name, replyToken, lineAccessToken);
                     } else {
                         const inactiveMessage = messageTemplatesMap.get('machine_inactive') || 'เครื่อง {display_name} กำลังปิดใช้งานอยู่ค่ะ';
-                        await replyMessage(replyToken, inactiveMessage.replace('{display_name}', machineConfigData.display_name));
+                        // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                        await replyMessage(replyToken, inactiveMessage.replace('{display_name}', machineConfigData.display_name), lineAccessToken);
                     }
                 } else {
-                    await replyMessage(replyToken, messageTemplatesMap.get('machine_not_found') || 'ไม่พบหมายเลขเครื่องซักผ้า');
+                    // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                    await replyMessage(replyToken, messageTemplatesMap.get('machine_not_found') || 'ไม่พบหมายเลขเครื่องซักผ้า', lineAccessToken);
                 }
             } else {
-                await replyMessage(replyToken, messageTemplatesMap.get('machine_not_found') || 'ข้อมูลหมายเลขเครื่องซักผ้าไม่ถูกต้อง');
+                // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                await replyMessage(replyToken, messageTemplatesMap.get('machine_not_found') || 'ข้อมูลหมายเลขเครื่องซักผ้าไม่ถูกต้อง', lineAccessToken);
             }
         } else if (userMessage.startsWith("อบผ้า_เลือก_")) {
             const requestedMachineId = parseInt(userMessage.replace('อบผ้า_เลือก_', ''), 10);
@@ -275,16 +302,20 @@ export async function POST(request: NextRequest) {
                 if (!machineSnapshot.empty) {
                     const machineConfigData = machineSnapshot.docs[0].data();
                     if (machineConfigData.is_active) {
-                        await startTimer(userId, STORE_ID, 'dryer', machineConfigData.machine_id, machineConfigData.duration_minutes, machineConfigData.display_name, replyToken);
+                        // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                        await startTimer(userId, STORE_ID, 'dryer', machineConfigData.machine_id, machineConfigData.duration_minutes, machineConfigData.display_name, replyToken, lineAccessToken);
                     } else {
                         const inactiveMessage = messageTemplatesMap.get('machine_inactive') || 'เครื่อง {display_name} กำลังปิดใช้งานอยู่ค่ะ';
-                        await replyMessage(replyToken, inactiveMessage.replace('{display_name}', machineConfigData.display_name));
+                        // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                        await replyMessage(replyToken, inactiveMessage.replace('{display_name}', machineConfigData.display_name), lineAccessToken);
                     }
                 } else {
-                    await replyMessage(replyToken, messageTemplatesMap.get('machine_not_found') || 'ไม่พบเครื่องอบผ้า');
+                    // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                    await replyMessage(replyToken, messageTemplatesMap.get('machine_not_found') || 'ไม่พบเครื่องอบผ้า', lineAccessToken);
                 }
             } else {
-                await replyMessage(replyToken, messageTemplatesMap.get('machine_not_found') || 'ข้อมูลเครื่องอบผ้าไม่ถูกต้อง');
+                // แก้ไข: ส่ง lineAccessToken ไปด้วย
+                await replyMessage(replyToken, messageTemplatesMap.get('machine_not_found') || 'ข้อมูลเครื่องอบผ้าไม่ถูกต้อง', lineAccessToken);
             }
         }
         else {
@@ -292,11 +323,13 @@ export async function POST(request: NextRequest) {
                 { type: 'action', action: { type: 'message', label: 'ซักผ้า', text: 'ซักผ้า' } },
                 { type: 'action', action: { type: 'message', label: 'อบผ้า', text: 'อบผ้า' } }
             ];
-            await replyMessage(replyToken, messageTemplatesMap.get('initial_greeting') || 'สวัสดีค่ะ กรุณาเลือกบริการที่ต้องการค่ะ', initialButtons);
+            // แก้ไข: ส่ง lineAccessToken ไปด้วย
+            await replyMessage(replyToken, messageTemplatesMap.get('initial_greeting') || 'สวัสดีค่ะ กรุณาเลือกบริการที่ต้องการค่ะ', lineAccessToken, initialButtons);
         }
       } else {
         if (event.replyToken) {
-            await replyMessage(event.replyToken, messageTemplatesMap.get('non_text_message') || 'ขออภัยค่ะ บอทเข้าใจเฉพาะข้อความตัวอักษรเท่านั้น');
+            // แก้ไข: ส่ง lineAccessToken ไปด้วย
+            await replyMessage(event.replyToken, messageTemplatesMap.get('non_text_message') || 'ขออภัยค่ะ บอทเข้าใจเฉพาะข้อความตัวอักษรเท่านั้น', lineAccessToken);
         }
       }
     }
@@ -304,11 +337,12 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error("Error in webhook handler:", error);
     
-    // ดึง replyToken จาก event แรกเป็น fallback ในกรณีที่เกิด error
     const fallbackReplyToken = events?.[0]?.replyToken;
     
     if (fallbackReplyToken) {
-        await replyMessage(fallbackReplyToken, messageTemplatesMap.get('generic_error') || 'ขออภัยค่ะ เกิดข้อผิดพลาดทางเทคนิค กรุณาลองใหม่อีกครั้ง');
+        // แก้ไข: หากเกิดข้อผิดพลาดในการประมวลผล เราไม่สามารถตอบกลับได้ถ้าไม่แน่ใจว่า lineAccessToken มีค่า
+        // สำหรับตอนนี้ เราจะส่งข้อความ Error กลับไปโดยไม่ต้องใช้ lineAccessToken ในกรณีนี้
+        return new NextResponse("Internal Server Error", { status: 500 });
     }
     
     return new NextResponse("Internal Server Error", { status: 500 });
