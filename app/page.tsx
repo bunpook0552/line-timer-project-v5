@@ -27,7 +27,7 @@ if (!getApps().length) {
 const db = getFirestore(firebaseApp);
 
 // กำหนด ID ร้านค้า (ต้องตรงกับ Document ID ของร้านใน Firestore)
-const STORE_ID = 'laundry_1'; 
+const STORE_ID = 'laundry_5'; 
 
 export default function HomePage() {
   const [pageContent, setPageContent] = useState({
