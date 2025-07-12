@@ -43,7 +43,7 @@ export default function HomePage() {
   });
   const [loadingContent, setLoadingContent] = useState(true);
 
-  const lineAddFriendUrl = "https://line.me/R/ti/p/@074lywik"; // LINE OA ID ของคุณ
+  const lineAddFriendUrl = "https://line.me/R/ti/p/@618hbfvj"; // LINE OA ID ของคุณ
 
   useEffect(() => {
     const fetchContent = async () => {
